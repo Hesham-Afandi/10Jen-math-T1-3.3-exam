@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 امتحان الميل ومعدل التغير (3-3)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        body.en-mode { font-family: 'Inter', sans-serif; }
+        .correct { background-color: #dcfce7 !important; border-color: #16a34a !important; }
+        .incorrect { background-color: #fee2e2 !important; border-color: #dc2626 !important; }
+        .formula { font-family: 'Times New Roman', serif; direction: ltr; display: inline-block; font-style: italic; }
+        .timer-warning { color: #dc2626 !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.7; } }
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; color: black; }
+            .answer-box { display: block !important; color: #166534 !important; }
+            #results-panel { display: block !important; box-shadow: none; border: 2px solid #000; }
+        }
+        .success-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.875rem; }
+        .grade-excellent { background: #dcfce7; color: #166534; }
+        .grade-good { background: #fef3c7; color: #92400e; }
+        .grade-pass { background: #dbeafe; color: #1e40af; }
+        .grade-fail { background: #fee2e2; color: #991b1b; }
+        .lang-switch {
+            position: fixed; top: 16px; left: 16px; z-index: 100;
+            background: white; padding: 6px; border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; gap: 4px;
+            border: 2px solid #8b5cf6;
+        }
+        [dir="ltr"] .lang-switch { left: auto; right: 16px; }
+        .lang-btn {
+            padding: 6px 14px; border-radius: 20px; cursor: pointer; font-weight: bold;
+            transition: all 0.3s; border: none; font-size: 0.875rem;
+            background: transparent; color: #6b7280;
+        }
+        .lang-btn.active { background: #8b5cf6; color: white; box-shadow: 0 2px 6px rgba(139,92,246,0.4); }
+        .lang-btn:hover:not(.active) { background: #f5f3ff; color: #8b5cf6; }
+        .shuffle-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-4 md:p-8 min-h-screen">
+
+    <div class="lang-switch no-print">
+        <button type="button" class="lang-btn active" onclick="setLanguage('ar')" id="btn-ar">عربي</button>
+        <button type="button" class="lang-btn" onclick="setLanguage('en')" id="btn-en">EN</button>
+    </div>
+
+    <div id="timer-container" class="max-w-4xl mx-auto mb-4 text-center no-print">
+        <div class="bg-white p-4 rounded-xl shadow-md inline-block border-2 border-purple-100">
+            <span class="text-gray-600 ml-2" data-ar="⏱️ الوقت المتبقي:" data-en="⏱️ Time Remaining:">⏱️ الوقت المتبقي:</span>
+            <span id="timer" class="text-2xl font-bold text-purple-600 font-mono">60:00</span>
+            <span class="shuffle-badge" data-ar="🔀 أسئلة عشوائية" data-en="🔀 Random Questions">🔀 أسئلة عشوائية</span>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto mb-6 flex flex-wrap gap-3 justify-center no-print">
+        <button type="button" onclick="toggleAnswers()" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg font-medium transition shadow cursor-pointer" data-ar="👁️ إظهار / إخفاء الإجابات" data-en="👁️ Show / Hide Answers">👁️ إظهار / إخفاء الإجابات</button>
+        <button type="button" onclick="window.print()" class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-lg font-medium transition shadow cursor-pointer" data-ar="🖨️ طباعة / PDF" data-en="🖨️ Print / PDF">🖨️ طباعة / PDF</button>
+        <button type="button" onclick="reshuffleExam()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-5 py-2 rounded-lg font-medium transition shadow cursor-pointer" data-ar="🔀 إعادة خلط الأسئلة" data-en="🔀 Reshuffle Questions">🔀 إعادة خلط الأسئلة</button>
+    </div>
+
+    <header class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md mb-8 border-r-4 border-purple-600">
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2" data-ar="📝 امتحان الميل ومعدل التغير (3-3)" data-en="📝 Slope and Rate of Change Exam (3-3)">📝 امتحان الميل ومعدل التغير (3-3)</h1>
+            <h2 class="text-lg text-purple-600 font-semibold" data-ar="Slope and Rate of Change" data-en="Slope and Rate of Change">Slope and Rate of Change</h2>
+            <p class="text-sm text-gray-600 mt-2" data-ar="امتحان شامل لحساب الميل، أنواعه، التوازي والتعامد، والتطبيقات الحياتية" data-en="Comprehensive exam on calculating slope, its types, parallelism, perpendicularity, and real-life applications">امتحان شامل لحساب الميل، أنواعه، التوازي والتعامد، والتطبيقات الحياتية</p>
+            <p class="text-xs text-purple-600 mt-2 font-semibold" data-ar="⚠️ ملاحظة: يتم خلط ترتيب الأسئلة والخيارات تلقائياً مع كل تحديث للصفحة" data-en="⚠️ Note: Questions and options are randomly shuffled on every page refresh">⚠️ ملاحظة: يتم خلط ترتيب الأسئلة والخيارات تلقائياً مع كل تحديث للصفحة</p>
+        </div>
+        <div class="mt-4 flex flex-wrap justify-center gap-4 text-sm text-gray-600">
+            <span><span data-ar="📅 التاريخ:" data-en="📅 Date:">📅 التاريخ:</span> <input type="date" id="examDate" class="border-b border-gray-400 bg-transparent w-32 text-center"></span>
+            <span><span data-ar="👤 الاسم:" data-en="👤 Name:">👤 الاسم:</span> <input type="text" id="studentName" class="border-b border-gray-400 bg-transparent w-32 text-center" placeholder="Enter name" required></span>
+            <span><span data-ar="🏫 الشعبة:" data-en="🏫 Class:">🏫 الشعبة:</span> <input type="text" id="studentClass" class="border-b border-gray-400 bg-transparent w-28 text-center" placeholder="Class"></span>
+            <span><span data-ar="⏱️ المدة: 60 دقيقة" data-en="⏱️ Duration: 60 min">⏱️ المدة: 60 دقيقة</span></span>
+            <span><span data-ar="📊 المجموع: 50 درجة" data-en="📊 Total: 50 pts">📊 المجموع: 50 درجة</span></span>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto space-y-8" id="exam-content"></main>
+
+    <div class="text-center no-print pb-8 mt-8">
+        <button type="button" onclick="gradeExam()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-lg px-10 py-4 rounded-xl font-bold shadow-xl transition transform hover:scale-105 cursor-pointer" data-ar="📝 تسليم وتصحيح الامتحان" data-en="📝 Submit & Grade Exam">📝 تسليم وتصحيح الامتحان</button>
+    </div>
+
+    <div id="results-panel" class="max-w-4xl mx-auto mt-8 bg-white p-8 rounded-2xl shadow-2xl border-t-4 border-emerald-500 hidden no-print">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center" data-ar="📊 نتائج الامتحان" data-en="📊 Exam Results">📊 نتائج الامتحان</h2>
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 p-4 rounded-xl text-center"><p data-ar="اسم الطالب" data-en="Student Name">اسم الطالب</p><p id="res-name" class="font-bold text-xl text-purple-700">-</p></div>
+            <div class="bg-purple-50 p-4 rounded-xl text-center"><p data-ar="التاريخ" data-en="Date">التاريخ</p><p id="res-date" class="font-bold text-xl text-purple-700">-</p></div>
+            <div class="bg-emerald-50 p-4 rounded-xl text-center"><p data-ar="المجموع" data-en="Score">المجموع</p><p id="res-total" class="font-bold text-3xl text-emerald-600">0 / 50</p></div>
+        </div>
+        <div class="text-center mb-6">
+            <span id="success-badge" class="success-badge grade-excellent">-</span>
+            <p id="success-percent" class="text-4xl font-bold text-emerald-600 mt-2">100%</p>
+            <p class="text-sm text-gray-500" data-ar="نسبة النجاح" data-en="Success Rate">نسبة النجاح</p>
+        </div>
+        <div class="bg-gray-50 p-6 rounded-xl mb-6">
+            <h3 class="font-bold text-lg mb-4 text-gray-800" data-ar="📈 تفصيل الأداء حسب القسم:" data-en="📈 Performance Breakdown:">📈 تفصيل الأداء حسب القسم:</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center"><span class="text-gray-700" data-ar="تعريف الميل وحسابه من نقطتين" data-en="Definition of Slope and Calculating from Two Points">تعريف الميل وحسابه من نقطتين</span><span id="sec1-score" class="font-bold text-purple-600">0/10</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-700" data-ar="أنواع الميل" data-en="Types of Slope">أنواع الميل</span><span id="sec2-score" class="font-bold text-purple-600">0/10</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-700" data-ar="الميل والتوازي والتعامد" data-en="Slope, Parallelism and Perpendicularity">الميل والتوازي والتعامد</span><span id="sec3-score" class="font-bold text-purple-600">0/10</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-700" data-ar="حل المعادلات لإيجاد قيم مجهولة" data-en="Solving Equations for Unknown Values">حل المعادلات لإيجاد قيم مجهولة</span><span id="sec4-score" class="font-bold text-purple-600">0/10</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-700" data-ar="التطبيقات الحياتية والمسائل المتقدمة" data-en="Real-Life Applications and Advanced Problems">التطبيقات الحياتية والمسائل المتقدمة</span><span id="sec5-score" class="font-bold text-purple-600">0/10</span></div>
+            </div>
+        </div>
+        <div class="text-center mb-6">
+            <button type="button" id="sendEmailBtn" onclick="sendResultsToEmail()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg px-8 py-3 rounded-xl font-bold shadow-xl transition transform hover:scale-105 cursor-pointer" data-ar="📧 إرسال النتائج للمعلم" data-en="📧 Send Results to Teacher">📧 إرسال النتائج للمعلم</button>
+            <p id="emailStatus" class="text-sm mt-2 text-center font-medium"></p>
+        </div>
+        <div class="flex gap-3 justify-center">
+            <button type="button" onclick="window.print()" class="bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold" data-ar="🖨️ طباعة النتائج" data-en="🖨️ Print Results">🖨️ طباعة النتائج</button>
+        </div>
+    </div>
+
+    <footer class="max-w-4xl mx-auto mt-10 mb-8 text-center text-gray-500 text-sm no-print">
+        © <span data-ar="Slope and Rate of Change (3-3)" data-en="Slope and Rate of Change (3-3)">Slope and Rate of Change (3-3)</span> | Mr. Mohammed Hesham
+    </footer>
+
+<script>
+// ==================== EmailJS Settings ====================
+const PUBLIC_KEY = "Rb3Lq8tXaFmc5YHUH";
+const SERVICE_ID = "service_w15m64i";
+const TEMPLATE_ID = "template_5b0u2tq";
+const TARGET_EMAIL = "mohammedhesham872@gmail.com";
+
+emailjs.init(PUBLIC_KEY);
+
+const originalExamData = {
+    sections: [
+        {
+            id: 'sec1',
+            title: { ar: '🔹 الجزء الأول: تعريف الميل وحسابه من نقطتين', en: '🔹 Part 1: Definition of Slope and Calculating from Two Points' },
+            questions: [
+                { q: { ar: 'ما تعريف الميل (Slope)؟', en: 'What is the definition of slope?' }, options: [ { ar: 'مقياس لانحدار الخط، وهو معدل التغير الرأسي مقارنة بالتغير الأفقي', en: 'A measure of the steepness of a line, which is the rate of vertical change compared to horizontal change' }, { ar: 'المسافة بين نقطتين', en: 'The distance between two points' }, { ar: 'طول الخط المستقيم', en: 'The length of the straight line' }, { ar: 'الزاوية التي يصنعها الخط', en: 'The angle the line makes' } ], correct: 0, answer: { ar: 'الميل هو مقياس لانحدار الخط = التغير الرأسي / التغير الأفقي', en: 'Slope is a measure of the steepness of a line = rise/run' } },
+                { q: { ar: 'ما صيغة حساب الميل بين النقطتين (x₁, y₁) و (x₂, y₂)؟', en: 'What is the formula for slope between points (x₁, y₁) and (x₂, y₂)?' }, options: [ { ar: 'm = (y₂ - y₁)/(x₂ - x₁)', en: 'm = (y₂ - y₁)/(x₂ - x₁)' }, { ar: 'm = (x₂ - x₁)/(y₂ - y₁)', en: 'm = (x₂ - x₁)/(y₂ - y₁)' }, { ar: 'm = (y₂ + y₁)/(x₂ + x₁)', en: 'm = (y₂ + y₁)/(x₂ + x₁)' }, { ar: 'm = (y₂ - x₁)/(x₂ - y₁)', en: 'm = (y₂ - x₁)/(x₂ - y₁)' } ], correct: 0, answer: { ar: 'صيغة الميل هي m = (y₂ - y₁)/(x₂ - x₁)', en: 'The slope formula is m = (y₂ - y₁)/(x₂ - x₁)' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين U(-1, -2) و C(3, 3)', en: 'Calculate the slope of the line through U(-1, -2) and C(3, 3)' }, options: [ { ar: '5/4', en: '5/4' }, { ar: '4/5', en: '4/5' }, { ar: '-5/4', en: '-5/4' }, { ar: '1/4', en: '1/4' } ], correct: 0, answer: { ar: 'm = (3 - (-2))/(3 - (-1)) = 5/4', en: 'm = (3 - (-2))/(3 - (-1)) = 5/4' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين P(-2, 3) و Q(1, -3)', en: 'Calculate the slope of the line through P(-2, 3) and Q(1, -3)' }, options: [ { ar: '-2', en: '-2' }, { ar: '2', en: '2' }, { ar: '-6', en: '-6' }, { ar: '6', en: '6' } ], correct: 0, answer: { ar: 'm = (-3 - 3)/(1 - (-2)) = -6/3 = -2', en: 'm = (-3 - 3)/(1 - (-2)) = -6/3 = -2' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (2, 4) و (5, 6)', en: 'Calculate the slope of the line through (2, 4) and (5, 6)' }, options: [ { ar: '2/3', en: '2/3' }, { ar: '3/2', en: '3/2' }, { ar: '-2/3', en: '-2/3' }, { ar: '1', en: '1' } ], correct: 0, answer: { ar: 'm = (6 - 4)/(5 - 2) = 2/3', en: 'm = (6 - 4)/(5 - 2) = 2/3' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (-3, -5) و (-3, -1)', en: 'Calculate the slope of the line through (-3, -5) and (-3, -1)' }, options: [ { ar: 'غير معرف', en: 'Undefined' }, { ar: '0', en: '0' }, { ar: '4', en: '4' }, { ar: '-4', en: '-4' } ], correct: 0, answer: { ar: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = غير معرف (خط رأسي)', en: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = undefined (vertical line)' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (4, 3) و (-3, 3)', en: 'Calculate the slope of the line through (4, 3) and (-3, 3)' }, options: [ { ar: '0', en: '0' }, { ar: 'غير معرف', en: 'Undefined' }, { ar: '1', en: '1' }, { ar: '-1', en: '-1' } ], correct: 0, answer: { ar: 'm = (3 - 3)/(-3 - 4) = 0/-7 = 0 (خط أفقي)', en: 'm = (3 - 3)/(-3 - 4) = 0/-7 = 0 (horizontal line)' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (0, 5) و (4, -4)', en: 'Calculate the slope of the line through (0, 5) and (4, -4)' }, options: [ { ar: '-9/4', en: '-9/4' }, { ar: '9/4', en: '9/4' }, { ar: '-4/9', en: '-4/9' }, { ar: '4/9', en: '4/9' } ], correct: 0, answer: { ar: 'm = (-4 - 5)/(4 - 0) = -9/4', en: 'm = (-4 - 5)/(4 - 0) = -9/4' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (2, -4) و (10, 4)', en: 'Calculate the slope of the line through (2, -4) and (10, 4)' }, options: [ { ar: '1', en: '1' }, { ar: '-1', en: '-1' }, { ar: '8', en: '8' }, { ar: '1/8', en: '1/8' } ], correct: 0, answer: { ar: 'm = (4 - (-4))/(10 - 2) = 8/8 = 1', en: 'm = (4 - (-4))/(10 - 2) = 8/8 = 1' } },
+                { q: { ar: 'احسب ميل الخط المار بالنقطتين (1, -3) و (4, -3)', en: 'Calculate the slope of the line through (1, -3) and (4, -3)' }, options: [ { ar: '0', en: '0' }, { ar: 'غير معرف', en: 'Undefined' }, { ar: '1', en: '1' }, { ar: '-1', en: '-1' } ], correct: 0, answer: { ar: 'm = (-3 - (-3))/(4 - 1) = 0/3 = 0', en: 'm = (-3 - (-3))/(4 - 1) = 0/3 = 0' } }
+            ]
+        },
+        {
+            id: 'sec2',
+            title: { ar: '🔹 الجزء الثاني: أنواع الميل', en: '🔹 Part 2: Types of Slope' },
+            questions: [
+                { q: { ar: 'إذا كان الخط صاعداً من اليسار إلى اليمين، فما نوع ميله؟', en: 'If the line rises from left to right, what type of slope does it have?' }, options: [ { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'الخط الصاعد من اليسار إلى اليمين له ميل موجب', en: 'A line rising from left to right has a positive slope' } },
+                { q: { ar: 'إذا كان الخط هابطاً من اليسار إلى اليمين، فما نوع ميله؟', en: 'If the line falls from left to right, what type of slope does it have?' }, options: [ { ar: 'سالب', en: 'Negative' }, { ar: 'موجب', en: 'Positive' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'الخط الهابط من اليسار إلى اليمين له ميل سالب', en: 'A line falling from left to right has a negative slope' } },
+                { q: { ar: 'ما نوع ميل الخط الأفقي؟', en: 'What type of slope does a horizontal line have?' }, options: [ { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' }, { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' } ], correct: 0, answer: { ar: 'الخط الأفقي له ميل = 0', en: 'A horizontal line has slope = 0' } },
+                { q: { ar: 'ما نوع ميل الخط الرأسي؟', en: 'What type of slope does a vertical line have?' }, options: [ { ar: 'غير معرف', en: 'Undefined' }, { ar: 'صفر', en: 'Zero' }, { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' } ], correct: 0, answer: { ar: 'الخط الرأسي له ميل غير معرف (المقام = 0)', en: 'A vertical line has undefined slope (denominator = 0)' } },
+                { q: { ar: 'إذا كان m = 3/4، فما نوع الميل؟', en: 'If m = 3/4, what type of slope is it?' }, options: [ { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'm = 3/4 > 0، لذا الميل موجب', en: 'm = 3/4 > 0, so the slope is positive' } },
+                { q: { ar: 'إذا كان m = -5/2، فما نوع الميل؟', en: 'If m = -5/2, what type of slope is it?' }, options: [ { ar: 'سالب', en: 'Negative' }, { ar: 'موجب', en: 'Positive' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'm = -5/2 < 0، لذا الميل سالب', en: 'm = -5/2 < 0, so the slope is negative' } },
+                { q: { ar: 'الخط المار بالنقطتين (2, 5) و (4, 9) له ميل:', en: 'The line through (2, 5) and (4, 9) has slope:' }, options: [ { ar: '2 (موجب)', en: '2 (positive)' }, { ar: '-2 (سالب)', en: '-2 (negative)' }, { ar: '0', en: '0' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'm = (9 - 5)/(4 - 2) = 4/2 = 2 (موجب)', en: 'm = (9 - 5)/(4 - 2) = 4/2 = 2 (positive)' } },
+                { q: { ar: 'الخط المار بالنقطتين (3, 7) و (5, 1) له ميل:', en: 'The line through (3, 7) and (5, 1) has slope:' }, options: [ { ar: '-3 (سالب)', en: '-3 (negative)' }, { ar: '3 (موجب)', en: '3 (positive)' }, { ar: '0', en: '0' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'm = (1 - 7)/(5 - 3) = -6/2 = -3 (سالب)', en: 'm = (1 - 7)/(5 - 3) = -6/2 = -3 (negative)' } },
+                { q: { ar: 'الخط المار بالنقطتين (1, 4) و (1, 8) له ميل:', en: 'The line through (1, 4) and (1, 8) has slope:' }, options: [ { ar: 'غير معرف (خط رأسي)', en: 'Undefined (vertical line)' }, { ar: '0', en: '0' }, { ar: '4', en: '4' }, { ar: '1', en: '1' } ], correct: 0, answer: { ar: 'm = (8 - 4)/(1 - 1) = 4/0 = غير معرف', en: 'm = (8 - 4)/(1 - 1) = 4/0 = undefined' } },
+                { q: { ar: 'أي من الخطوط التالية له ميل = 0؟', en: 'Which of the following lines has slope = 0?' }, options: [ { ar: 'الخط المار بالنقطتين (2, 3) و (5, 3)', en: 'The line through (2, 3) and (5, 3)' }, { ar: 'الخط المار بالنقطتين (2, 3) و (2, 7)', en: 'The line through (2, 3) and (2, 7)' }, { ar: 'الخط المار بالنقطتين (2, 3) و (4, 5)', en: 'The line through (2, 3) and (4, 5)' }, { ar: 'الخط المار بالنقطتين (2, 3) و (4, 1)', en: 'The line through (2, 3) and (4, 1)' } ], correct: 0, answer: { ar: 'الخط الأفقي (نفس الإحداثي y) له ميل = 0', en: 'A horizontal line (same y-coordinate) has slope = 0' } }
+            ]
+        },
+        {
+            id: 'sec3',
+            title: { ar: '🔹 الجزء الثالث: الميل والتوازي والتعامد', en: '🔹 Part 3: Slope, Parallelism and Perpendicularity' },
+            questions: [
+                { q: { ar: 'ما العلاقة بين ميلَي خطين متوازيين؟', en: 'What is the relationship between the slopes of two parallel lines?' }, options: [ { ar: 'متساويان (m₁ = m₂)', en: 'Equal (m₁ = m₂)' }, { ar: 'مقلوبان', en: 'Reciprocals' }, { ar: 'سالب مقلوب كل منهما للآخر', en: 'Negative reciprocals of each other' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل', en: 'Parallel lines have the same slope' } },
+                { q: { ar: 'ما العلاقة بين ميلَي خطين متعامدين؟', en: 'What is the relationship between the slopes of two perpendicular lines?' }, options: [ { ar: 'سالب مقلوب كل منهما للآخر (m₁ · m₂ = -1)', en: 'Negative reciprocals (m₁ · m₂ = -1)' }, { ar: 'متساويان', en: 'Equal' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' }, { ar: 'حاصل ضربهما = 1', en: 'Their product = 1' } ], correct: 0, answer: { ar: 'الخطوط المتعامدة ميل كل منها سالب مقلوب الآخر', en: 'Perpendicular lines have slopes that are negative reciprocals' } },
+                { q: { ar: 'إذا كان ميل الخط a هو 2/3، فما ميل الخط b الموازي له؟', en: 'If the slope of line a is 2/3, what is the slope of parallel line b?' }, options: [ { ar: '2/3', en: '2/3' }, { ar: '-2/3', en: '-2/3' }, { ar: '3/2', en: '3/2' }, { ar: '-3/2', en: '-3/2' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل، لذا m = 2/3', en: 'Parallel lines have the same slope, so m = 2/3' } },
+                { q: { ar: 'إذا كان ميل الخط a هو 2/3، فما ميل الخط c العمودي عليه؟', en: 'If the slope of line a is 2/3, what is the slope of perpendicular line c?' }, options: [ { ar: '-3/2', en: '-3/2' }, { ar: '3/2', en: '3/2' }, { ar: '-2/3', en: '-2/3' }, { ar: '2/3', en: '2/3' } ], correct: 0, answer: { ar: 'الميل العمودي = -3/2 (سالب مقلوب 2/3)', en: 'Perpendicular slope = -3/2 (negative reciprocal of 2/3)' } },
+                { q: { ar: 'إذا كان ميل الخط AB هو -1/5، وميل الخط CD هو 5، فما العلاقة بينهما؟', en: 'If slope of AB is -1/5 and slope of CD is 5, what is their relationship?' }, options: [ { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متوازيان', en: 'Parallel' }, { ar: 'لا علاقة بينهما', en: 'No relationship' }, { ar: 'متطابقان', en: 'Identical' } ], correct: 0, answer: { ar: '(-1/5) × 5 = -1، لذا هما متعامدان', en: '(-1/5) × 5 = -1, so they are perpendicular' } },
+                { q: { ar: 'إذا كان ميل الخط AB هو 4/3، وميل الخط CD هو 4/3، فما العلاقة بينهما؟', en: 'If slope of AB is 4/3 and slope of CD is 4/3, what is their relationship?' }, options: [ { ar: 'متوازيان', en: 'Parallel' }, { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متطابقان', en: 'Identical' }, { ar: 'لا علاقة', en: 'No relationship' } ], correct: 0, answer: { ar: 'نفس الميل، لذا هما متوازيان', en: 'Same slope, so they are parallel' } },
+                { q: { ar: 'إذا كان ميل الخط a هو 3، فأي من الأعداد التالية يمثل ميل خط عمودي عليه؟', en: 'If the slope of line a is 3, which represents the slope of a perpendicular line?' }, options: [ { ar: '-1/3', en: '-1/3' }, { ar: '1/3', en: '1/3' }, { ar: '-3', en: '-3' }, { ar: '3', en: '3' } ], correct: 0, answer: { ar: 'الميل العمودي = -1/3', en: 'Perpendicular slope = -1/3' } },
+                { q: { ar: 'إذا كان ميل الخط a هو -2، فأي من الأعداد التالية يمثل ميل خط موازٍ له؟', en: 'If the slope of line a is -2, which represents the slope of a parallel line?' }, options: [ { ar: '-2', en: '-2' }, { ar: '2', en: '2' }, { ar: '1/2', en: '1/2' }, { ar: '-1/2', en: '-1/2' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل، لذا m = -2', en: 'Parallel lines have the same slope, so m = -2' } },
+                { q: { ar: 'إذا كان a ∥ b و m_a = 5/7، فما m_b؟', en: 'If a ∥ b and m_a = 5/7, what is m_b?' }, options: [ { ar: '5/7', en: '5/7' }, { ar: '-5/7', en: '-5/7' }, { ar: '-7/5', en: '-7/5' }, { ar: '7/5', en: '7/5' } ], correct: 0, answer: { ar: 'بما أن a ∥ b، فإن m_b = m_a = 5/7', en: 'Since a ∥ b, m_b = m_a = 5/7' } },
+                { q: { ar: 'إذا كان a ⊥ b و m_a = 4، فما m_b؟', en: 'If a ⊥ b and m_a = 4, what is m_b?' }, options: [ { ar: '-1/4', en: '-1/4' }, { ar: '1/4', en: '1/4' }, { ar: '-4', en: '-4' }, { ar: '4', en: '4' } ], correct: 0, answer: { ar: 'بما أن a ⊥ b، فإن m_b = -1/4', en: 'Since a ⊥ b, m_b = -1/4' } }
+            ]
+        },
+        {
+            id: 'sec4',
+            title: { ar: '🔹 الجزء الرابع: حل المعادلات لإيجاد قيم مجهولة', en: '🔹 Part 4: Solving Equations for Unknown Values' },
+            questions: [
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (x, -6) و (4, -1) هو 1/2، فأوجد x', en: 'If the slope of the line through (x, -6) and (4, -1) is 1/2, find x' }, options: [ { ar: 'x = -6', en: 'x = -6' }, { ar: 'x = 6', en: 'x = 6' }, { ar: 'x = -4', en: 'x = -4' }, { ar: 'x = 4', en: 'x = 4' } ], correct: 0, answer: { ar: '1/2 = (-1 - (-6))/(4 - x) = 5/(4-x) → 4-x = 10 → x = -6', en: '1/2 = (-1 - (-6))/(4 - x) = 5/(4-x) → 4-x = 10 → x = -6' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (4, y) و (-8, 1) هو -1/2، فأوجد y', en: 'If the slope of the line through (4, y) and (-8, 1) is -1/2, find y' }, options: [ { ar: 'y = 7', en: 'y = 7' }, { ar: 'y = -7', en: 'y = -7' }, { ar: 'y = 5', en: 'y = 5' }, { ar: 'y = -5', en: 'y = -5' } ], correct: 0, answer: { ar: '-1/2 = (1 - y)/(-8 - 4) = (1-y)/-12 → 1-y = 6 → y = -5 (مراجعة)', en: '-1/2 = (1 - y)/(-8 - 4) = (1-y)/-12 → 1-y = 6 → y = -5 (review)' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (x, 3) و (2, 4) هو -1/2، فأوجد x', en: 'If the slope of the line through (x, 3) and (2, 4) is -1/2, find x' }, options: [ { ar: 'x = 4', en: 'x = 4' }, { ar: 'x = -4', en: 'x = -4' }, { ar: 'x = 0', en: 'x = 0' }, { ar: 'x = 2', en: 'x = 2' } ], correct: 0, answer: { ar: '-1/2 = (4 - 3)/(2 - x) = 1/(2-x) → 2-x = -2 → x = 4', en: '-1/2 = (4 - 3)/(2 - x) = 1/(2-x) → 2-x = -2 → x = 4' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (7, -6) و (8, y) هو 13، فأوجد y', en: 'If the slope of the line through (7, -6) and (8, y) is 13, find y' }, options: [ { ar: 'y = 7', en: 'y = 7' }, { ar: 'y = -7', en: 'y = -7' }, { ar: 'y = 6', en: 'y = 6' }, { ar: 'y = -6', en: 'y = -6' } ], correct: 0, answer: { ar: '13 = (y - (-6))/(8 - 7) = (y+6)/1 → y+6 = 13 → y = 7', en: '13 = (y - (-6))/(8 - 7) = (y+6)/1 → y+6 = 13 → y = 7' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (9, y) و (-6, 7) هو 2، فأوجد y', en: 'If the slope of the line through (9, y) and (-6, 7) is 2, find y' }, options: [ { ar: 'y = 37', en: 'y = 37' }, { ar: 'y = -23', en: 'y = -23' }, { ar: 'y = 23', en: 'y = 23' }, { ar: 'y = -37', en: 'y = -37' } ], correct: 0, answer: { ar: '2 = (7 - y)/(-6 - 9) = (7-y)/-15 → 7-y = -30 → y = 37', en: '2 = (7 - y)/(-6 - 9) = (7-y)/-15 → 7-y = -30 → y = 37' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (3, 5) و (x, -3) هو -4، فأوجد x', en: 'If the slope of the line through (3, 5) and (x, -3) is -4, find x' }, options: [ { ar: 'x = 5', en: 'x = 5' }, { ar: 'x = 1', en: 'x = 1' }, { ar: 'x = 7', en: 'x = 7' }, { ar: 'x = -1', en: 'x = -1' } ], correct: 0, answer: { ar: '-4 = (-3 - 5)/(x - 3) = -8/(x-3) → x-3 = 2 → x = 5', en: '-4 = (-3 - 5)/(x - 3) = -8/(x-3) → x-3 = 2 → x = 5' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (x, -4) و (0, 5) هو 3، فأوجد x', en: 'If the slope of the line through (x, -4) and (0, 5) is 3, find x' }, options: [ { ar: 'x = -3', en: 'x = -3' }, { ar: 'x = 3', en: 'x = 3' }, { ar: 'x = -1', en: 'x = -1' }, { ar: 'x = 1', en: 'x = 1' } ], correct: 0, answer: { ar: '3 = (5 - (-4))/(0 - x) = 9/(-x) → -x = 3 → x = -3', en: '3 = (5 - (-4))/(0 - x) = 9/(-x) → -x = 3 → x = -3' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (4, y) و (0, -4) هو 2، فأوجد y', en: 'If the slope of the line through (4, y) and (0, -4) is 2, find y' }, options: [ { ar: 'y = 4', en: 'y = 4' }, { ar: 'y = -4', en: 'y = -4' }, { ar: 'y = 8', en: 'y = 8' }, { ar: 'y = 0', en: 'y = 0' } ], correct: 0, answer: { ar: '2 = (y - (-4))/(4 - 0) = (y+4)/4 → y+4 = 8 → y = 4', en: '2 = (y - (-4))/(4 - 0) = (y+4)/4 → y+4 = 8 → y = 4' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (-2, 3) و (x, -5) هو 4، فأوجد x', en: 'If the slope of the line through (-2, 3) and (x, -5) is 4, find x' }, options: [ { ar: 'x = -4', en: 'x = -4' }, { ar: 'x = 0', en: 'x = 0' }, { ar: 'x = 4', en: 'x = 4' }, { ar: 'x = -2', en: 'x = -2' } ], correct: 0, answer: { ar: '4 = (-5 - 3)/(x - (-2)) = -8/(x+2) → x+2 = -2 → x = -4', en: '4 = (-5 - 3)/(x - (-2)) = -8/(x+2) → x+2 = -2 → x = -4' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (5, 2) و (x, 2) هو 0، فما قيمة x؟', en: 'If the slope of the line through (5, 2) and (x, 2) is 0, what is the value of x?' }, options: [ { ar: 'أي قيمة عدا 5', en: 'Any value except 5' }, { ar: 'x = 5', en: 'x = 5' }, { ar: 'x = 0', en: 'x = 0' }, { ar: 'x = 2', en: 'x = 2' } ], correct: 0, answer: { ar: 'الميل = 0 يعني خط أفقي، وأي x ≠ 5 يحقق ذلك', en: 'Slope = 0 means horizontal line, any x ≠ 5 satisfies this' } }
+            ]
+        },
+        {
+            id: 'sec5',
+            title: { ar: '🔹 الجزء الخامس: التطبيقات الحياتية والمسائل المتقدمة', en: '🔹 Part 5: Real-Life Applications and Advanced Problems' },
+            questions: [
+                { q: { ar: 'في مثال الطائرة: عند t = 0.5 h المسافة = 620 km، وعند t = 1.25 h المسافة = 450 km. ما معدل التغير (الميل)؟', en: 'In the airplane example: at t = 0.5 h distance = 620 km, and at t = 1.25 h distance = 450 km. What is the rate of change (slope)?' }, options: [ { ar: '-340 km/h', en: '-340 km/h' }, { ar: '340 km/h', en: '340 km/h' }, { ar: '-170 km/h', en: '-170 km/h' }, { ar: '170 km/h', en: '170 km/h' } ], correct: 0, answer: { ar: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h', en: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h' } },
+                { q: { ar: 'إذا انخفض سعر MP3 من AED 499 في 2003 إلى AED 249.995 في 2009، فما معدل التغير السنوي؟', en: 'If MP3 price dropped from AED 499 in 2003 to AED 249.995 in 2009, what is the annual rate of change?' }, options: [ { ar: '-41.67 AED/سنة تقريباً', en: 'Approximately -41.67 AED/year' }, { ar: '41.67 AED/سنة', en: '41.67 AED/year' }, { ar: '-250 AED/سنة', en: '-250 AED/year' }, { ar: '250 AED/سنة', en: '250 AED/year' } ], correct: 0, answer: { ar: 'm = (249.995 - 499)/(2009 - 2003) = -249.005/6 ≈ -41.67 AED/سنة', en: 'm = (249.995 - 499)/(2009 - 2003) = -249.005/6 ≈ -41.67 AED/year' } },
+                { q: { ar: 'إذا كان ميل الخط AB = -1 وميل الخط CD = -1، فما العلاقة بينهما؟', en: 'If slope of AB = -1 and slope of CD = -1, what is their relationship?' }, options: [ { ar: 'متوازيان', en: 'Parallel' }, { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متطابقان', en: 'Identical' }, { ar: 'لا علاقة', en: 'No relationship' } ], correct: 0, answer: { ar: 'نفس الميل، لذا هما متوازيان', en: 'Same slope, so they are parallel' } },
+                { q: { ar: 'إذا كان ميل الخط AB = -1 وميل الخط CD = 1، فما العلاقة بينهما؟', en: 'If slope of AB = -1 and slope of CD = 1, what is their relationship?' }, options: [ { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متوازيان', en: 'Parallel' }, { ar: 'لا علاقة', en: 'No relationship' }, { ar: 'متطابقان', en: 'Identical' } ], correct: 0, answer: { ar: '(-1) × 1 = -1، لذا هما متعامدان', en: '(-1) × 1 = -1, so they are perpendicular' } },
+                { q: { ar: 'في اختبار SAT: إذا كان ميل الخط المار بـ (a, b) و (c, d) هو 5/7، فأي من التالي يمثل ميل خط موازٍ له؟', en: 'SAT test: If slope of line through (a, b) and (c, d) is 5/7, which represents the slope of a parallel line?' }, options: [ { ar: '5/7', en: '5/7' }, { ar: '-5/7', en: '-5/7' }, { ar: '-7/5', en: '-7/5' }, { ar: '7/5', en: '7/5' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل = 5/7', en: 'Parallel lines have the same slope = 5/7' } },
+                { q: { ar: 'إذا كان ميل الخط = 0، فما شكل الخط؟', en: 'If slope = 0, what is the shape of the line?' }, options: [ { ar: 'أفقي', en: 'Horizontal' }, { ar: 'رأسي', en: 'Vertical' }, { ar: 'مائل للأعلى', en: 'Rising' }, { ar: 'مائل للأسفل', en: 'Falling' } ], correct: 0, answer: { ar: 'الميل = 0 يعني خط أفقي', en: 'Slope = 0 means horizontal line' } },
+                { q: { ar: 'إذا كان ميل الخط غير معرف، فما شكل الخط؟', en: 'If slope is undefined, what is the shape of the line?' }, options: [ { ar: 'رأسي', en: 'Vertical' }, { ar: 'أفقي', en: 'Horizontal' }, { ar: 'مائل للأعلى', en: 'Rising' }, { ar: 'مائل للأسفل', en: 'Falling' } ], correct: 0, answer: { ar: 'الميل غير معرف يعني خط رأسي (المقام = 0)', en: 'Undefined slope means vertical line (denominator = 0)' } },
+                { q: { ar: 'إذا كان ميل الخط المار بالنقطتين (2, 2) و (0, -4) هو 3، فأي النقاط التالية تقع على نفس الخط؟', en: 'If slope of line through (2, 2) and (0, -4) is 3, which point lies on the same line?' }, options: [ { ar: '(1, -1)', en: '(1, -1)' }, { ar: '(1, 1)', en: '(1, 1)' }, { ar: '(3, 4)', en: '(3, 4)' }, { ar: '(3, 5)', en: '(3, 5)' } ], correct: 0, answer: { ar: 'عند x=1: y = -4 + 3(1) = -1، لذا (1, -1) على الخط', en: 'At x=1: y = -4 + 3(1) = -1, so (1, -1) is on the line' } },
+                { q: { ar: 'إذا كان ميل الخط = -2/3، فأي مما يلي صحيح؟', en: 'If slope = -2/3, which is true?' }, options: [ { ar: 'الخط هابط من اليسار إلى اليمين', en: 'The line falls from left to right' }, { ar: 'الخط صاعد من اليسار إلى اليمين', en: 'The line rises from left to right' }, { ar: 'الخط أفقي', en: 'The line is horizontal' }, { ar: 'الخط رأسي', en: 'The line is vertical' } ], correct: 0, answer: { ar: 'الميل السالب يعني خط هابط من اليسار إلى اليمين', en: 'Negative slope means line falls from left to right' } },
+                { q: { ar: 'في مسألة تطبيقية: سيارة قطعت 150 km في 3 ساعات، فما معدل التغير (السرعة)؟', en: 'Applied problem: A car traveled 150 km in 3 hours, what is the rate of change (speed)?' }, options: [ { ar: '50 km/h', en: '50 km/h' }, { ar: '150 km/h', en: '150 km/h' }, { ar: '450 km/h', en: '450 km/h' }, { ar: '30 km/h', en: '30 km/h' } ], correct: 0, answer: { ar: 'معدل التغير = 150/3 = 50 km/h', en: 'Rate of change = 150/3 = 50 km/h' } }
+            ]
+        }
+    ]
+};
+
+// ==================== Helper Functions ====================
+function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+let examData;
+let correctAnswersMap = {};
+let currentLang = 'ar';
+let timeRemaining = 3600;
+let timerInterval;
+
+function prepareShuffledExam() {
+    examData = JSON.parse(JSON.stringify(originalExamData));
+    correctAnswersMap = {};
+    let globalIdx = 0;
+
+    examData.sections.forEach((section) => {
+        section.questions = shuffleArray(section.questions);
+        section.questions.forEach((q) => {
+            const optionsWithCorrect = q.options.map((opt, idx) => ({
+                option: opt,
+                isCorrect: idx === q.correct
+            }));
+
+            const shuffledOptions = shuffleArray(optionsWithCorrect);
+            q.options = shuffledOptions.map(o => o.option);
+            const newCorrectIndex = shuffledOptions.findIndex(o => o.isCorrect);
+            q.correct = newCorrectIndex;
+
+            correctAnswersMap[globalIdx] = String.fromCharCode(97 + newCorrectIndex);
+            globalIdx++;
+        });
+    });
+}
+
+function reshuffleExam() {
+    prepareShuffledExam();
+    renderExam();
+    document.querySelectorAll('input[type="radio"]:checked').forEach(r => r.checked = false);
+    document.getElementById('results-panel').classList.add('hidden');
+    document.querySelectorAll('.correct, .incorrect').forEach(el => {
+        el.classList.remove('correct', 'incorrect');
+    });
+    alert(currentLang === 'ar' ? '🔀 تم إعادة خلط الأسئلة والخيارات بنجاح!' : '🔀 Questions and options have been reshuffled successfully!');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+    document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.body.classList.toggle('en-mode', lang === 'en');
+
+    document.querySelectorAll('[data-ar][data-en]').forEach(el => {
+        el.textContent = el.getAttribute(`data-${lang}`);
+    });
+
+    renderExam();
+}
+
+function renderExam() {
+    const container = document.getElementById('exam-content');
+    const labels = {
+        ar: { option: ['أ', 'ب', 'ج', 'د'], answer: '✅ الإجابة:' },
+        en: { option: ['A', 'B', 'C', 'D'], answer: '✅ Answer:' }
+    };
+    const lbl = labels[currentLang];
+    const isRTL = currentLang === 'ar';
+
+    let html = '';
+    let globalIdx = 0;
+
+    examData.sections.forEach((section) => {
+        html += `
+        <section class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-purple-700">${section.title[currentLang]}</h2>
+            <ol class="space-y-4 text-sm">`;
+
+        section.questions.forEach((q) => {
+            const borderSide = isRTL ? 'border-r-4 pr-4' : 'border-l-4 pl-4';
+            html += `
+                <li class="${borderSide} border-purple-500 py-2" id="q-${globalIdx}">
+                    <strong>${globalIdx + 1}.</strong> ${q.q[currentLang]}<br>`;
+
+            q.options.forEach((opt, oIdx) => {
+                const radioSide = isRTL ? 'mr-4 ml-2' : 'ml-4 mr-2';
+                html += `
+                    <label class="cursor-pointer block mt-1 ${isRTL ? 'mr-4' : 'ml-4'}">
+                        <input type="radio" name="q${globalIdx}" value="${String.fromCharCode(97 + oIdx)}" class="${radioSide}">
+                        ${lbl.option[oIdx]}) ${opt[currentLang]}
+                    </label>`;
+            });
+
+            html += `
+                    <div class="answer-box text-green-700 mt-2 font-medium hidden">
+                        ${lbl.answer} ${lbl.option[q.correct]}) ${q.options[q.correct][currentLang]} — ${q.answer[currentLang]}
+                    </div>
+                </li>`;
+            globalIdx++;
+        });
+
+        html += `
+            </ol>
+        </section>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function startTimer() {
+    document.getElementById('timer-container').style.display = 'block';
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        const timerEl = document.getElementById('timer');
+        timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+        if (timeRemaining <= 300) timerEl.classList.add('timer-warning');
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            alert(currentLang === 'ar' ? "انتهى الوقت! سيتم تسليم الامتحان تلقائياً." : "Time's up! Exam will be submitted automatically.");
+            gradeExam();
+        }
+    }, 1000);
+}
+
+function toggleAnswers() {
+    document.querySelectorAll('.answer-box').forEach(el => el.classList.toggle('hidden'));
+}
+
+function gradeExam() {
+    clearInterval(timerInterval);
+    let correctCount = 0;
+    let secScores = [0, 0, 0, 0, 0];
+
+    for (let i = 0; i < 50; i++) {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        const li = document.getElementById(`q-${i}`);
+        const correctAnswer = correctAnswersMap[i];
+
+        if (li) {
+            const isCorrect = selected && selected.value === correctAnswer;
+            if (isCorrect) {
+                correctCount++;
+                li.classList.add('correct');
+                li.classList.remove('incorrect');
+                secScores[Math.floor(i / 10)]++;
+            } else {
+                li.classList.add('incorrect');
+                li.classList.remove('correct');
+            }
+        }
+    }
+
+    const score = correctCount; 
+    const successRate = Math.round((score / 50) * 100);
+
+    document.getElementById('res-total').textContent = `${score} / 50`;
+    document.getElementById('res-name').textContent = document.getElementById('studentName').value || (currentLang === 'ar' ? 'طالب' : 'Student');
+    document.getElementById('res-date').textContent = document.getElementById('examDate').value || new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-AE' : 'en-US');
+
+    for (let i = 0; i < 5; i++) {
+        document.getElementById(`sec${i + 1}-score`).textContent = `${secScores[i]}/10`;
+    }
+
+    const badge = document.getElementById('success-badge');
+    const percent = document.getElementById('success-percent');
+    percent.textContent = `${successRate}%`;
+
+    if (currentLang === 'ar') {
+        if (successRate >= 90) { badge.textContent = 'ممتاز'; badge.className = 'success-badge grade-excellent'; }
+        else if (successRate >= 75) { badge.textContent = 'جيد جداً'; badge.className = 'success-badge grade-good'; }
+        else if (successRate >= 50) { badge.textContent = 'جيد'; badge.className = 'success-badge grade-pass'; }
+        else { badge.textContent = 'يحتاج تحسين'; badge.className = 'success-badge grade-fail'; }
+    } else {
+        if (successRate >= 90) { badge.textContent = 'Excellent'; badge.className = 'success-badge grade-excellent'; }
+        else if (successRate >= 75) { badge.textContent = 'Very Good'; badge.className = 'success-badge grade-good'; }
+        else if (successRate >= 50) { badge.textContent = 'Good'; badge.className = 'success-badge grade-pass'; }
+        else { badge.textContent = 'Needs Improvement'; badge.className = 'success-badge grade-fail'; }
+    }
+
+    document.getElementById('results-panel').classList.remove('hidden');
+    document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('sendEmailBtn').classList.remove('hidden');
+}
+
+function sendResultsToEmail() {
+    const name = document.getElementById('studentName').value.trim();
+    if (!name) {
+        alert(currentLang === 'ar' ? '⚠️ يرجى إدخال اسم الطالب أولاً قبل إرسال النتائج.' : '⚠️ Please enter the student name before sending results.');
+        document.getElementById('studentName').focus();
+        return;
+    }
+
+    const btn = document.getElementById('sendEmailBtn');
+    const status = document.getElementById('emailStatus');
+    btn.disabled = true;
+    btn.textContent = currentLang === 'ar' ? '⏳ جاري الإرسال...' : '📤 Sending...';
+
+    const studentClass = document.getElementById('studentClass').value || 'N/A';
+    const date = document.getElementById('examDate').value || new Date().toLocaleDateString();
+    const score = document.getElementById('res-total').textContent;
+    const successRate = document.getElementById('success-percent').textContent;
+    const badge = document.getElementById('success-badge').textContent;
+
+    const sectionNames = {
+        ar: ['تعريف الميل وحسابه', 'أنواع الميل', 'الميل والتوازي والتعامد', 'حل المعادلات لإيجاد قيم مجهولة', 'التطبيقات الحياتية'],
+        en: ['Definition of Slope and Calculating', 'Types of Slope', 'Slope, Parallelism and Perpendicularity', 'Solving Equations for Unknown Values', 'Real-Life Applications']
+    };
+    const currentSectionNames = sectionNames[currentLang];
+
+    let answersHTML = `<div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: ${currentLang === 'ar' ? 'rtl' : 'ltr'};">
+        <div style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h2 style="margin: 0; font-size: 22px;">📝 ${currentLang === 'ar' ? 'نتيجة امتحان الميل ومعدل التغير' : 'Slope and Rate of Change Exam Result'}</h2>
+        </div>
+        <div style="background: #f5f3ff; padding: 15px; border: 1px solid #e9d5ff;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px; font-weight: bold; color: #7c3aed;">${currentLang === 'ar' ? '👤 الاسم:' : '👤 Name:'}</td><td style="padding: 8px;">${name}</td><td style="padding: 8px; font-weight: bold; color: #7c3aed;">${currentLang === 'ar' ? '🏫 الشعبة:' : '🏫 Class:'}</td><td style="padding: 8px;">${studentClass}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold; color: #7c3aed;">${currentLang === 'ar' ? '📅 التاريخ:' : '📅 Date:'}</td><td style="padding: 8px;">${date}</td><td style="padding: 8px; font-weight: bold; color: #7c3aed;">${currentLang === 'ar' ? '🏆 التقدير:' : '🏆 Grade:'}</td><td style="padding: 8px;">${badge}</td></tr>
+            </table>
+        </div>
+        <div style="background: white; padding: 20px; text-align: center; border-bottom: 2px solid #e5e7eb;">
+            <div style="display: inline-block; margin: 0 15px;"><div style="font-size: 32px; font-weight: bold; color: #8b5cf6;">${score}</div><div style="color: #6b7280; font-size: 13px;">${currentLang === 'ar' ? 'الدرجة الكلية' : 'Total Score'}</div></div>
+            <div style="display: inline-block; margin: 0 15px;"><div style="font-size: 32px; font-weight: bold; color: #10b981;">${successRate}%</div><div style="color: #6b7280; font-size: 13px;">${currentLang === 'ar' ? 'نسبة النجاح' : 'Success Rate'}</div></div>
+        </div>
+        <h3 style="background: #f3f4f6; padding: 12px; margin: 0; color: #1f2937; border-bottom: 2px solid #d1d5db;">📝 ${currentLang === 'ar' ? 'تفاصيل الإجابات' : 'Answer Details'}</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead><tr style="background: #8b5cf6; color: white;">
+                <th style="padding: 10px; border: 1px solid #7c3aed; width: 8%;">#</th>
+                <th style="padding: 10px; border: 1px solid #7c3aed; width: 32%;">${currentLang === 'ar' ? 'القسم' : 'Section'}</th>
+                <th style="padding: 10px; border: 1px solid #7c3aed; width: 15%;">${currentLang === 'ar' ? 'إجابة الطالب' : 'Student Answer'}</th>
+                <th style="padding: 10px; border: 1px solid #7c3aed; width: 15%;">${currentLang === 'ar' ? 'الصحيحة' : 'Correct'}</th>
+                <th style="padding: 10px; border: 1px solid #7c3aed; width: 15%;">${currentLang === 'ar' ? 'النتيجة' : 'Status'}</th>
+            </tr></thead><tbody>`;
+
+    let secScoresEmail = [0, 0, 0, 0, 0];
+    for (let i = 0; i < 50; i++) {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        const selectedValue = selected ? selected.value.toUpperCase() : '-';
+        const correctValue = correctAnswersMap[i].toUpperCase();
+        const isCorrect = selectedValue === correctValue;
+        const sectionIndex = Math.floor(i / 10);
+        if (isCorrect) secScoresEmail[sectionIndex]++;
+
+        const rowBg = i % 2 === 0 ? '#f9fafb' : '#ffffff';
+        const statusBg = isCorrect ? '#dcfce7' : '#fee2e2';
+        const statusColor = isCorrect ? '#166534' : '#991b1b';
+        const statusIcon = isCorrect ? '✅' : '❌';
+        const statusText = isCorrect ? (currentLang === 'ar' ? 'صحيح' : 'Correct') : (currentLang === 'ar' ? 'خطأ' : 'Wrong');
+
+        answersHTML += `<tr style="background: ${rowBg};">
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">${i + 1}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${currentSectionNames[sectionIndex]}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold;">${selectedValue}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold; color: #059669;">${correctValue}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; background: ${statusBg}; color: ${statusColor}; font-weight: bold;">${statusIcon} ${statusText}</td>
+        </tr>`;
+    }
+
+    answersHTML += `</tbody></table>
+        <h3 style="background: #f3f4f6; padding: 12px; margin: 0; color: #1f2937; border-bottom: 2px solid #d1d5db; border-top: 3px solid #8b5cf6;">📊 ${currentLang === 'ar' ? 'تفصيل الأداء' : 'Performance Breakdown'}</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead><tr style="background: #7c3aed; color: white;">
+                <th style="padding: 10px; border: 1px solid #6d28d9;">${currentLang === 'ar' ? 'القسم' : 'Section'}</th>
+                <th style="padding: 10px; border: 1px solid #6d28d9; width: 20%;">${currentLang === 'ar' ? 'النتيجة' : 'Score'}</th>
+                <th style="padding: 10px; border: 1px solid #6d28d9; width: 20%;">${currentLang === 'ar' ? 'النسبة' : 'Percentage'}</th>
+            </tr></thead><tbody>`;
+
+    for (let i = 0; i < 5; i++) {
+        const percentage = Math.round((secScoresEmail[i] / 10) * 100);
+        const barColor = percentage >= 75 ? '#10b981' : percentage >= 50 ? '#f59e0b' : '#ef4444';
+        const rowBg = i % 2 === 0 ? '#f9fafb' : '#ffffff';
+        answersHTML += `<tr style="background: ${rowBg};">
+            <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: 600;">${currentSectionNames[i]}</td>
+            <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: center; font-weight: bold; color: #8b5cf6;">${secScoresEmail[i]} / 10</td>
+            <td style="padding: 10px; border: 1px solid #e5e7eb;">
+                <div style="background: #e5e7eb; border-radius: 10px; overflow: hidden; height: 20px; position: relative;">
+                    <div style="background: ${barColor}; width: ${percentage}%; height: 100%;"></div>
+                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: bold; color: #1f2937;">${percentage}%</span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    answersHTML += `</tbody></table>
+        <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 15px; border-radius: 0 0 10px 10px; border-top: 2px solid #f59e0b;">
+            <p style="margin: 0; color: #78350f; text-align: center; font-size: 13px;">💡 <strong>${currentLang === 'ar' ? 'ملاحظة:' : 'Note:'}</strong> ${currentLang === 'ar' ? 'تم إرسال هذا التقرير تلقائياً من منصة 4U التعليمية | Mr. Mohammed Hesham' : 'This report was automatically sent from 4U Educational Platform | Mr. Mohammed Hesham'}</p>
+        </div></div>`;
+
+    const templateParams = {
+        to_email: TARGET_EMAIL,
+        student_name: name,
+        student_class: studentClass,
+        exam_date: date,
+        total_score: score,
+        success_rate: successRate,
+        grade: badge,
+        answers_table: answersHTML
+    };
+
+    emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams)
+        .then(() => {
+            status.textContent = currentLang === 'ar' ? '✅ تم إرسال النتائج بنجاح!' : '✅ Results sent successfully!';
+            status.style.color = '#059669';
+            btn.textContent = currentLang === 'ar' ? '✓ تم الإرسال' : '✓ Sent';
+        })
+        .catch(err => {
+            status.textContent = currentLang === 'ar' ? '❌ فشل الإرسال، تحقق من الاتصال أو إعدادات EmailJS' : '❌ Failed to send, check connection or EmailJS settings';
+            status.style.color = '#dc2626';
+            btn.disabled = false;
+            btn.textContent = currentLang === 'ar' ? '📧 إعادة المحاولة' : '📧 Retry Send';
+            console.error('EmailJS Error:', err);
+        });
+}
+
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('examDate').valueAsDate = new Date();
+    prepareShuffledExam();
+    renderExam();
+    startTimer();
+});
+</script>
+</body>
+</html>
