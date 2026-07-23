@@ -20,6 +20,9 @@
             body { background: white; color: black; }
             .answer-box { display: block !important; color: #166534 !important; }
             #results-panel { display: block !important; box-shadow: none; border: 2px solid #000; }
+            /* ✅ ضمان طباعة ألوان الرسومات والخلفيات بدقة */
+            svg { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .bg-gray-50 { background-color: #f9fafb !important; }
         }
         .success-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.875rem; }
         .grade-excellent { background: #dcfce7; color: #166534; }
@@ -140,6 +143,48 @@ const TARGET_EMAIL = "mohammedhesham872@gmail.com";
 
 emailjs.init(PUBLIC_KEY);
 
+// ==================== SVG Graphics Templates for Slope ====================
+// قالب يوضح مفهوم الميل (Rise / Run) على مستوى إحداثي
+const svgSlopeRiseRun = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" class="w-64 h-48 mx-auto my-2 drop-shadow-sm">
+    <defs>
+        <pattern id="gridSR" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="300" height="200" fill="url(#gridSR)" />
+    <line x1="0" y1="100" x2="300" y2="100" stroke="#4b5563" stroke-width="2" />
+    <line x1="150" y1="0" x2="150" y2="200" stroke="#4b5563" stroke-width="2" />
+    <line x1="50" y1="150" x2="250" y2="50" stroke="#8b5cf6" stroke-width="3" />
+    <circle cx="50" cy="150" r="4" fill="#dc2626" />
+    <circle cx="250" cy="50" r="4" fill="#dc2626" />
+    <line x1="50" y1="150" x2="250" y2="150" stroke="#059669" stroke-width="2" stroke-dasharray="4" />
+    <line x1="250" y1="150" x2="250" y2="50" stroke="#059669" stroke-width="2" stroke-dasharray="4" />
+    <text x="130" y="175" font-size="13" fill="#059669" font-weight="bold" font-family="sans-serif">Run (x₂ - x₁)</text>
+    <text x="255" y="105" font-size="13" fill="#059669" font-weight="bold" font-family="sans-serif" transform="rotate(-90 255 105)">Rise (y₂ - y₁)</text>
+    <text x="110" y="40" font-size="16" fill="#8b5cf6" font-weight="bold" font-family="sans-serif">m = Rise / Run</text>
+</svg>`;
+
+// قالب يوضح الخطوط المتوازية والمتعامدة مع قيم الميل
+const svgParallelPerp = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" class="w-64 h-48 mx-auto my-2 drop-shadow-sm">
+    <defs>
+        <pattern id="gridPP" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="300" height="200" fill="url(#gridPP)" />
+    <line x1="0" y1="100" x2="300" y2="100" stroke="#4b5563" stroke-width="2" />
+    <line x1="150" y1="0" x2="150" y2="200" stroke="#4b5563" stroke-width="2" />
+    <line x1="50" y1="180" x2="250" y2="80" stroke="#8b5cf6" stroke-width="3" />
+    <line x1="50" y1="140" x2="250" y2="40" stroke="#8b5cf6" stroke-width="3" />
+    <text x="200" y="70" font-size="14" fill="#8b5cf6" font-weight="bold" font-family="sans-serif">m = 1/2</text>
+    <text x="200" y="30" font-size="14" fill="#8b5cf6" font-weight="bold" font-family="sans-serif">m = 1/2</text>
+    <line x1="80" y1="20" x2="220" y2="160" stroke="#dc2626" stroke-width="3" />
+    <text x="230" y="150" font-size="14" fill="#dc2626" font-weight="bold" font-family="sans-serif">m = -2</text>
+    <path d="M 140 110 L 150 110 L 150 100" fill="none" stroke="#dc2626" stroke-width="1.5" />
+</svg>`;
+
 const originalExamData = {
     sections: [
         {
@@ -148,10 +193,22 @@ const originalExamData = {
             questions: [
                 { q: { ar: 'ما تعريف الميل (Slope)؟', en: 'What is the definition of slope?' }, options: [ { ar: 'مقياس لانحدار الخط، وهو معدل التغير الرأسي مقارنة بالتغير الأفقي', en: 'A measure of the steepness of a line, which is the rate of vertical change compared to horizontal change' }, { ar: 'المسافة بين نقطتين', en: 'The distance between two points' }, { ar: 'طول الخط المستقيم', en: 'The length of the straight line' }, { ar: 'الزاوية التي يصنعها الخط', en: 'The angle the line makes' } ], correct: 0, answer: { ar: 'الميل هو مقياس لانحدار الخط = التغير الرأسي / التغير الأفقي', en: 'Slope is a measure of the steepness of a line = rise/run' } },
                 { q: { ar: 'ما صيغة حساب الميل بين النقطتين (x₁, y₁) و (x₂, y₂)؟', en: 'What is the formula for slope between points (x₁, y₁) and (x₂, y₂)?' }, options: [ { ar: 'm = (y₂ - y₁)/(x₂ - x₁)', en: 'm = (y₂ - y₁)/(x₂ - x₁)' }, { ar: 'm = (x₂ - x₁)/(y₂ - y₁)', en: 'm = (x₂ - x₁)/(y₂ - y₁)' }, { ar: 'm = (y₂ + y₁)/(x₂ + x₁)', en: 'm = (y₂ + y₁)/(x₂ + x₁)' }, { ar: 'm = (y₂ - x₁)/(x₂ - y₁)', en: 'm = (y₂ - x₁)/(x₂ - y₁)' } ], correct: 0, answer: { ar: 'صيغة الميل هي m = (y₂ - y₁)/(x₂ - x₁)', en: 'The slope formula is m = (y₂ - y₁)/(x₂ - x₁)' } },
-                { q: { ar: 'احسب ميل الخط المار بالنقطتين U(-1, -2) و C(3, 3)', en: 'Calculate the slope of the line through U(-1, -2) and C(3, 3)' }, options: [ { ar: '5/4', en: '5/4' }, { ar: '4/5', en: '4/5' }, { ar: '-5/4', en: '-5/4' }, { ar: '1/4', en: '1/4' } ], correct: 0, answer: { ar: 'm = (3 - (-2))/(3 - (-1)) = 5/4', en: 'm = (3 - (-2))/(3 - (-1)) = 5/4' } },
+                { 
+                    q: { ar: 'احسب ميل الخط المار بالنقطتين U(-1, -2) و C(3, 3)', en: 'Calculate the slope of the line through U(-1, -2) and C(3, 3)' },
+                    image: svgSlopeRiseRun, // ✅ تم إضافة الرسم التوضيحي للميل
+                    options: [ { ar: '5/4', en: '5/4' }, { ar: '4/5', en: '4/5' }, { ar: '-5/4', en: '-5/4' }, { ar: '1/4', en: '1/4' } ], 
+                    correct: 0, 
+                    answer: { ar: 'm = (3 - (-2))/(3 - (-1)) = 5/4', en: 'm = (3 - (-2))/(3 - (-1)) = 5/4' } 
+                },
                 { q: { ar: 'احسب ميل الخط المار بالنقطتين P(-2, 3) و Q(1, -3)', en: 'Calculate the slope of the line through P(-2, 3) and Q(1, -3)' }, options: [ { ar: '-2', en: '-2' }, { ar: '2', en: '2' }, { ar: '-6', en: '-6' }, { ar: '6', en: '6' } ], correct: 0, answer: { ar: 'm = (-3 - 3)/(1 - (-2)) = -6/3 = -2', en: 'm = (-3 - 3)/(1 - (-2)) = -6/3 = -2' } },
                 { q: { ar: 'احسب ميل الخط المار بالنقطتين (2, 4) و (5, 6)', en: 'Calculate the slope of the line through (2, 4) and (5, 6)' }, options: [ { ar: '2/3', en: '2/3' }, { ar: '3/2', en: '3/2' }, { ar: '-2/3', en: '-2/3' }, { ar: '1', en: '1' } ], correct: 0, answer: { ar: 'm = (6 - 4)/(5 - 2) = 2/3', en: 'm = (6 - 4)/(5 - 2) = 2/3' } },
-                { q: { ar: 'احسب ميل الخط المار بالنقطتين (-3, -5) و (-3, -1)', en: 'Calculate the slope of the line through (-3, -5) and (-3, -1)' }, options: [ { ar: 'غير معرف', en: 'Undefined' }, { ar: '0', en: '0' }, { ar: '4', en: '4' }, { ar: '-4', en: '-4' } ], correct: 0, answer: { ar: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = غير معرف (خط رأسي)', en: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = undefined (vertical line)' } },
+                { 
+                    q: { ar: 'احسب ميل الخط المار بالنقطتين (-3, -5) و (-3, -1)', en: 'Calculate the slope of the line through (-3, -5) and (-3, -1)' },
+                    image: svgSlopeRiseRun, // ✅ تم إضافة الرسم التوضيحي
+                    options: [ { ar: 'غير معرف', en: 'Undefined' }, { ar: '0', en: '0' }, { ar: '4', en: '4' }, { ar: '-4', en: '-4' } ], 
+                    correct: 0, 
+                    answer: { ar: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = غير معرف (خط رأسي)', en: 'm = (-1 - (-5))/(-3 - (-3)) = 4/0 = undefined (vertical line)' } 
+                },
                 { q: { ar: 'احسب ميل الخط المار بالنقطتين (4, 3) و (-3, 3)', en: 'Calculate the slope of the line through (4, 3) and (-3, 3)' }, options: [ { ar: '0', en: '0' }, { ar: 'غير معرف', en: 'Undefined' }, { ar: '1', en: '1' }, { ar: '-1', en: '-1' } ], correct: 0, answer: { ar: 'm = (3 - 3)/(-3 - 4) = 0/-7 = 0 (خط أفقي)', en: 'm = (3 - 3)/(-3 - 4) = 0/-7 = 0 (horizontal line)' } },
                 { q: { ar: 'احسب ميل الخط المار بالنقطتين (0, 5) و (4, -4)', en: 'Calculate the slope of the line through (0, 5) and (4, -4)' }, options: [ { ar: '-9/4', en: '-9/4' }, { ar: '9/4', en: '9/4' }, { ar: '-4/9', en: '-4/9' }, { ar: '4/9', en: '4/9' } ], correct: 0, answer: { ar: 'm = (-4 - 5)/(4 - 0) = -9/4', en: 'm = (-4 - 5)/(4 - 0) = -9/4' } },
                 { q: { ar: 'احسب ميل الخط المار بالنقطتين (2, -4) و (10, 4)', en: 'Calculate the slope of the line through (2, -4) and (10, 4)' }, options: [ { ar: '1', en: '1' }, { ar: '-1', en: '-1' }, { ar: '8', en: '8' }, { ar: '1/8', en: '1/8' } ], correct: 0, answer: { ar: 'm = (4 - (-4))/(10 - 2) = 8/8 = 1', en: 'm = (4 - (-4))/(10 - 2) = 8/8 = 1' } },
@@ -162,7 +219,13 @@ const originalExamData = {
             id: 'sec2',
             title: { ar: '🔹 الجزء الثاني: أنواع الميل', en: '🔹 Part 2: Types of Slope' },
             questions: [
-                { q: { ar: 'إذا كان الخط صاعداً من اليسار إلى اليمين، فما نوع ميله؟', en: 'If the line rises from left to right, what type of slope does it have?' }, options: [ { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'الخط الصاعد من اليسار إلى اليمين له ميل موجب', en: 'A line rising from left to right has a positive slope' } },
+                { 
+                    q: { ar: 'إذا كان الخط صاعداً من اليسار إلى اليمين، فما نوع ميله؟', en: 'If the line rises from left to right, what type of slope does it have?' },
+                    image: svgSlopeRiseRun, // ✅ تم إضافة الرسم التوضيحي
+                    options: [ { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], 
+                    correct: 0, 
+                    answer: { ar: 'الخط الصاعد من اليسار إلى اليمين له ميل موجب', en: 'A line rising from left to right has a positive slope' } 
+                },
                 { q: { ar: 'إذا كان الخط هابطاً من اليسار إلى اليمين، فما نوع ميله؟', en: 'If the line falls from left to right, what type of slope does it have?' }, options: [ { ar: 'سالب', en: 'Negative' }, { ar: 'موجب', en: 'Positive' }, { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' } ], correct: 0, answer: { ar: 'الخط الهابط من اليسار إلى اليمين له ميل سالب', en: 'A line falling from left to right has a negative slope' } },
                 { q: { ar: 'ما نوع ميل الخط الأفقي؟', en: 'What type of slope does a horizontal line have?' }, options: [ { ar: 'صفر', en: 'Zero' }, { ar: 'غير معرف', en: 'Undefined' }, { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' } ], correct: 0, answer: { ar: 'الخط الأفقي له ميل = 0', en: 'A horizontal line has slope = 0' } },
                 { q: { ar: 'ما نوع ميل الخط الرأسي؟', en: 'What type of slope does a vertical line have?' }, options: [ { ar: 'غير معرف', en: 'Undefined' }, { ar: 'صفر', en: 'Zero' }, { ar: 'موجب', en: 'Positive' }, { ar: 'سالب', en: 'Negative' } ], correct: 0, answer: { ar: 'الخط الرأسي له ميل غير معرف (المقام = 0)', en: 'A vertical line has undefined slope (denominator = 0)' } },
@@ -178,8 +241,20 @@ const originalExamData = {
             id: 'sec3',
             title: { ar: '🔹 الجزء الثالث: الميل والتوازي والتعامد', en: '🔹 Part 3: Slope, Parallelism and Perpendicularity' },
             questions: [
-                { q: { ar: 'ما العلاقة بين ميلَي خطين متوازيين؟', en: 'What is the relationship between the slopes of two parallel lines?' }, options: [ { ar: 'متساويان (m₁ = m₂)', en: 'Equal (m₁ = m₂)' }, { ar: 'مقلوبان', en: 'Reciprocals' }, { ar: 'سالب مقلوب كل منهما للآخر', en: 'Negative reciprocals of each other' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل', en: 'Parallel lines have the same slope' } },
-                { q: { ar: 'ما العلاقة بين ميلَي خطين متعامدين؟', en: 'What is the relationship between the slopes of two perpendicular lines?' }, options: [ { ar: 'سالب مقلوب كل منهما للآخر (m₁ · m₂ = -1)', en: 'Negative reciprocals (m₁ · m₂ = -1)' }, { ar: 'متساويان', en: 'Equal' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' }, { ar: 'حاصل ضربهما = 1', en: 'Their product = 1' } ], correct: 0, answer: { ar: 'الخطوط المتعامدة ميل كل منها سالب مقلوب الآخر', en: 'Perpendicular lines have slopes that are negative reciprocals' } },
+                { 
+                    q: { ar: 'ما العلاقة بين ميلَي خطين متوازيين؟', en: 'What is the relationship between the slopes of two parallel lines?' },
+                    image: svgParallelPerp, // ✅ تم إضافة الرسم التوضيحي
+                    options: [ { ar: 'متساويان (m₁ = m₂)', en: 'Equal (m₁ = m₂)' }, { ar: 'مقلوبان', en: 'Reciprocals' }, { ar: 'سالب مقلوب كل منهما للآخر', en: 'Negative reciprocals of each other' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' } ], 
+                    correct: 0, 
+                    answer: { ar: 'الخطوط المتوازية لها نفس الميل', en: 'Parallel lines have the same slope' } 
+                },
+                { 
+                    q: { ar: 'ما العلاقة بين ميلَي خطين متعامدين؟', en: 'What is the relationship between the slopes of two perpendicular lines?' },
+                    image: svgParallelPerp, // ✅ تم إضافة الرسم التوضيحي
+                    options: [ { ar: 'سالب مقلوب كل منهما للآخر (m₁ · m₂ = -1)', en: 'Negative reciprocals (m₁ · m₂ = -1)' }, { ar: 'متساويان', en: 'Equal' }, { ar: 'مجموعهما = 0', en: 'Their sum = 0' }, { ar: 'حاصل ضربهما = 1', en: 'Their product = 1' } ], 
+                    correct: 0, 
+                    answer: { ar: 'الخطوط المتعامدة ميل كل منها سالب مقلوب الآخر', en: 'Perpendicular lines have slopes that are negative reciprocals' } 
+                },
                 { q: { ar: 'إذا كان ميل الخط a هو 2/3، فما ميل الخط b الموازي له؟', en: 'If the slope of line a is 2/3, what is the slope of parallel line b?' }, options: [ { ar: '2/3', en: '2/3' }, { ar: '-2/3', en: '-2/3' }, { ar: '3/2', en: '3/2' }, { ar: '-3/2', en: '-3/2' } ], correct: 0, answer: { ar: 'الخطوط المتوازية لها نفس الميل، لذا m = 2/3', en: 'Parallel lines have the same slope, so m = 2/3' } },
                 { q: { ar: 'إذا كان ميل الخط a هو 2/3، فما ميل الخط c العمودي عليه؟', en: 'If the slope of line a is 2/3, what is the slope of perpendicular line c?' }, options: [ { ar: '-3/2', en: '-3/2' }, { ar: '3/2', en: '3/2' }, { ar: '-2/3', en: '-2/3' }, { ar: '2/3', en: '2/3' } ], correct: 0, answer: { ar: 'الميل العمودي = -3/2 (سالب مقلوب 2/3)', en: 'Perpendicular slope = -3/2 (negative reciprocal of 2/3)' } },
                 { q: { ar: 'إذا كان ميل الخط AB هو -1/5، وميل الخط CD هو 5، فما العلاقة بينهما؟', en: 'If slope of AB is -1/5 and slope of CD is 5, what is their relationship?' }, options: [ { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متوازيان', en: 'Parallel' }, { ar: 'لا علاقة بينهما', en: 'No relationship' }, { ar: 'متطابقان', en: 'Identical' } ], correct: 0, answer: { ar: '(-1/5) × 5 = -1، لذا هما متعامدان', en: '(-1/5) × 5 = -1, so they are perpendicular' } },
@@ -210,7 +285,13 @@ const originalExamData = {
             id: 'sec5',
             title: { ar: '🔹 الجزء الخامس: التطبيقات الحياتية والمسائل المتقدمة', en: '🔹 Part 5: Real-Life Applications and Advanced Problems' },
             questions: [
-                { q: { ar: 'في مثال الطائرة: عند t = 0.5 h المسافة = 620 km، وعند t = 1.25 h المسافة = 450 km. ما معدل التغير (الميل)؟', en: 'In the airplane example: at t = 0.5 h distance = 620 km, and at t = 1.25 h distance = 450 km. What is the rate of change (slope)?' }, options: [ { ar: '-340 km/h', en: '-340 km/h' }, { ar: '340 km/h', en: '340 km/h' }, { ar: '-170 km/h', en: '-170 km/h' }, { ar: '170 km/h', en: '170 km/h' } ], correct: 0, answer: { ar: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h', en: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h' } },
+                { 
+                    q: { ar: 'في مثال الطائرة: عند t = 0.5 h المسافة = 620 km، وعند t = 1.25 h المسافة = 450 km. ما معدل التغير (الميل)؟', en: 'In the airplane example: at t = 0.5 h distance = 620 km, and at t = 1.25 h distance = 450 km. What is the rate of change (slope)?' },
+                    image: svgSlopeRiseRun, // ✅ تم إضافة الرسم التوضيحي لمعدل التغير
+                    options: [ { ar: '-340 km/h', en: '-340 km/h' }, { ar: '340 km/h', en: '340 km/h' }, { ar: '-170 km/h', en: '-170 km/h' }, { ar: '170 km/h', en: '170 km/h' } ], 
+                    correct: 0, 
+                    answer: { ar: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h', en: 'm = (450 - 620)/(1.25 - 0.5) = -170/0.5 = -340 km/h' } 
+                },
                 { q: { ar: 'إذا انخفض سعر MP3 من AED 499 في 2003 إلى AED 249.995 في 2009، فما معدل التغير السنوي؟', en: 'If MP3 price dropped from AED 499 in 2003 to AED 249.995 in 2009, what is the annual rate of change?' }, options: [ { ar: '-41.67 AED/سنة تقريباً', en: 'Approximately -41.67 AED/year' }, { ar: '41.67 AED/سنة', en: '41.67 AED/year' }, { ar: '-250 AED/سنة', en: '-250 AED/year' }, { ar: '250 AED/سنة', en: '250 AED/year' } ], correct: 0, answer: { ar: 'm = (249.995 - 499)/(2009 - 2003) = -249.005/6 ≈ -41.67 AED/سنة', en: 'm = (249.995 - 499)/(2009 - 2003) = -249.005/6 ≈ -41.67 AED/year' } },
                 { q: { ar: 'إذا كان ميل الخط AB = -1 وميل الخط CD = -1، فما العلاقة بينهما؟', en: 'If slope of AB = -1 and slope of CD = -1, what is their relationship?' }, options: [ { ar: 'متوازيان', en: 'Parallel' }, { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متطابقان', en: 'Identical' }, { ar: 'لا علاقة', en: 'No relationship' } ], correct: 0, answer: { ar: 'نفس الميل، لذا هما متوازيان', en: 'Same slope, so they are parallel' } },
                 { q: { ar: 'إذا كان ميل الخط AB = -1 وميل الخط CD = 1، فما العلاقة بينهما؟', en: 'If slope of AB = -1 and slope of CD = 1, what is their relationship?' }, options: [ { ar: 'متعامدان', en: 'Perpendicular' }, { ar: 'متوازيان', en: 'Parallel' }, { ar: 'لا علاقة', en: 'No relationship' }, { ar: 'متطابقان', en: 'Identical' } ], correct: 0, answer: { ar: '(-1) × 1 = -1، لذا هما متعامدان', en: '(-1) × 1 = -1, so they are perpendicular' } },
@@ -309,25 +390,31 @@ function renderExam() {
         html += `
         <section class="bg-white p-6 rounded-xl shadow-lg">
             <h2 class="text-xl font-bold mb-4 text-purple-700">${section.title[currentLang]}</h2>
-            <ol class="space-y-4 text-sm">`;
+            <ol class="space-y-6 text-sm">`; // ✅ زيادة المسافة لاستيعاب الرسومات
 
         section.questions.forEach((q) => {
             const borderSide = isRTL ? 'border-r-4 pr-4' : 'border-l-4 pl-4';
+            
+            // ✅ هنا يتم التحقق من وجود صورة وإضافتها بشكل أنيق
+            const imageHtml = q.image ? `<div class="my-3 p-4 bg-gray-50 rounded-xl border border-gray-200 flex justify-center items-center print:bg-white">${q.image}</div>` : '';
+
             html += `
-                <li class="${borderSide} border-purple-500 py-2" id="q-${globalIdx}">
-                    <strong>${globalIdx + 1}.</strong> ${q.q[currentLang]}<br>`;
+                <li class="${borderSide} border-purple-500 py-3" id="q-${globalIdx}">
+                    <strong>${globalIdx + 1}.</strong> ${q.q[currentLang]}
+                    ${imageHtml}
+                    <br>`;
 
             q.options.forEach((opt, oIdx) => {
                 const radioSide = isRTL ? 'mr-4 ml-2' : 'ml-4 mr-2';
                 html += `
-                    <label class="cursor-pointer block mt-1 ${isRTL ? 'mr-4' : 'ml-4'}">
+                    <label class="cursor-pointer block mt-2 ${isRTL ? 'mr-4' : 'ml-4'}">
                         <input type="radio" name="q${globalIdx}" value="${String.fromCharCode(97 + oIdx)}" class="${radioSide}">
                         ${lbl.option[oIdx]}) ${opt[currentLang]}
                     </label>`;
             });
 
             html += `
-                    <div class="answer-box text-green-700 mt-2 font-medium hidden">
+                    <div class="answer-box text-green-700 mt-3 font-medium hidden">
                         ${lbl.answer} ${lbl.option[q.correct]}) ${q.options[q.correct][currentLang]} — ${q.answer[currentLang]}
                     </div>
                 </li>`;
